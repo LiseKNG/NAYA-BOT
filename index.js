@@ -20,9 +20,12 @@ const AUTHORIZED_IDS = (process.env.AUTHORIZED_USER_IDS || "")
 const chatHistories = new Map();
 const MAX_HISTORY = 10;
 
+function isOwner(userId) {
+  return String(userId) === String(OWNER_ID);
+}
+
 function isAuthorized(userId) {
-  const id = String(userId);
-  return id === String(OWNER_ID) || AUTHORIZED_IDS.includes(id);
+  return isOwner(userId) || AUTHORIZED_IDS.includes(String(userId));
 }
 
 // Naya ne répond que si on l'appelle par son nom dans les groupes,
@@ -36,21 +39,21 @@ bot.on("text", async (ctx) => {
   const text = ctx.message.text;
   if (!shouldRespond(ctx, text)) return;
 
-  // Actions de contrôle du groupe = réservées aux personnes autorisées.
-  // (La conversation simple reste ouverte à tous ; à toi d'ajuster selon ton besoin.)
-  const isAdminAction = /\b(mute|silence|veille|sondage|annonce|d[ée]mute)\b/i.test(text);
-  if (isAdminAction && !isAuthorized(ctx.from.id)) {
+  // Accès complet (conversation + actions) réservé au grand frère et aux
+  // personnes autorisées. Les autres reçoivent le message d'accès payant.
+  if (!isAuthorized(ctx.from.id)) {
     await ctx.reply(
-      "Désolée, seules les personnes autorisées peuvent me demander ça ici 🙏"
+      "Hey ! Pour discuter avec moi ou me donner des ordres ici, il faut un accès : 10 ⭐ ou 1 💎 par semaine. Demande à mon grand frère pour en savoir plus 😊"
     );
     return;
   }
 
   const chatId = ctx.chat.id;
   const history = chatHistories.get(chatId) || [];
+  const senderIsOwner = isOwner(ctx.from.id);
 
   try {
-    const reply = await handleMessage(ctx, text, history);
+    const reply = await handleMessage(ctx, text, history, { isOwner: senderIsOwner });
 
     // Met à jour l'historique (limité pour ne pas exploser le contexte)
     history.push({ role: "user", content: text });
