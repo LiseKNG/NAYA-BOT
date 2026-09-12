@@ -14,8 +14,8 @@ export const toolDefinitions = [
         type: "object",
         properties: {
           duration_minutes: {
-            type: "number",
-            description: "Durée du mute en minutes. 0 ou absent = indéfini (jusqu'à démute manuel).",
+            type: ["number", "null"],
+            description: "Durée du mute en minutes. 0, null ou absent = indéfini (jusqu'à démute manuel).",
           },
         },
       },
