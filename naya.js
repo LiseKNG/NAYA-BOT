@@ -36,10 +36,16 @@ Après avoir exécuté une action, confirme-la avec ta personnalité (pas de ton
  * @param {import('telegraf').Context} ctx
  * @param {string} userMessage
  * @param {Array<{role: string, content: string}>} history - historique court de la conversation
+ * @param {{isOwner: boolean}} senderInfo - qui parle à Naya
  */
-export async function handleMessage(ctx, userMessage, history = []) {
+export async function handleMessage(ctx, userMessage, history = [], senderInfo = {}) {
+  const identityNote = senderInfo.isOwner
+    ? "Contexte : la personne qui t'écrit là est ton grand frère, le propriétaire du bot. C'est ta relation la plus proche."
+    : "Contexte : la personne qui t'écrit là est une personne autorisée (pas ton grand frère), traite-la avec gentillesse mais sans le lien fraternel.";
+
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: identityNote },
     ...history,
     { role: "user", content: userMessage },
   ];
