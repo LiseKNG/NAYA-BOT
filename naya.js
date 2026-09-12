@@ -11,7 +11,7 @@ import { toolDefinitions, executeTool } from "./tools.js";
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // Modèle gratuit avec bon support du function calling sur Groq
-const MODEL = "llama-3.3-70b-versatile";
+const MODEL = "openai/gpt-oss-120b";
 
 const SYSTEM_PROMPT = `Tu es Naya, une petite sœur virtuelle sur Telegram.
 
