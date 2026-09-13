@@ -2,6 +2,8 @@
 // Définit les "outils" que Naya peut utiliser (function calling)
 // et leur exécution réelle via l'API Telegram (Telegraf).
 
+import { renderWithPremiumEmojis } from "./premium-emojis.js";
+
 // Format OpenAI-compatible (utilisé par Groq) : { type: "function", function: {...} }
 export const toolDefinitions = [
   {
@@ -69,6 +71,33 @@ export const toolDefinitions = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "send_buttons_message",
+      description:
+        "Envoie un message avec des boutons cliquables (liens) sous le texte. Utilisé quand on demande d'envoyer un message avec des boutons/liens, par exemple 'envoie le lien du règlement avec un bouton'.",
+      parameters: {
+        type: "object",
+        properties: {
+          message: { type: "string", description: "Le texte du message" },
+          buttons: {
+            type: "array",
+            description: "Liste des boutons à afficher (max 5)",
+            items: {
+              type: "object",
+              properties: {
+                text: { type: "string", description: "Texte affiché sur le bouton" },
+                url: { type: "string", description: "Lien vers lequel le bouton pointe" },
+              },
+              required: ["text", "url"],
+            },
+          },
+        },
+        required: ["message", "buttons"],
+      },
+    },
+  },
 ];
 
 /**
@@ -114,11 +143,22 @@ export async function executeTool(ctx, toolName, input) {
     }
 
     case "send_announcement": {
-      const sent = await ctx.telegram.sendMessage(chatId, `📢 ${input.message}`);
+      const { text: renderedText, entities } = renderWithPremiumEmojis(`📢 ${input.message}`);
+      const sent = await ctx.telegram.sendMessage(chatId, renderedText, { entities });
       if (input.pin ?? true) {
         await ctx.telegram.pinChatMessage(chatId, sent.message_id);
       }
       return `Annonce envoyée${input.pin ?? true ? " et épinglée" : ""}.`;
+    }
+
+    case "send_buttons_message": {
+      const inlineKeyboard = input.buttons
+        .slice(0, 5)
+        .map((b) => [{ text: b.text, url: b.url }]);
+      await ctx.telegram.sendMessage(chatId, input.message, {
+        reply_markup: { inline_keyboard: inlineKeyboard },
+      });
+      return "Message avec boutons envoyé.";
     }
 
     default:
