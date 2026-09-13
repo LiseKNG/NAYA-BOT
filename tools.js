@@ -4,6 +4,8 @@
 
 import { renderWithPremiumEmojis } from "./premium-emojis.js";
 import { getLeaderboard } from "./points-store.js";
+import { generateLeaderboardImage } from "./leaderboard-image.js";
+import { getAllKnownChats } from "./known-chats.js";
 
 // Format OpenAI-compatible (utilisé par Groq) : { type: "function", function: {...} }
 export const toolDefinitions = [
@@ -118,6 +120,21 @@ export const toolDefinitions = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "broadcast_announcement",
+      description:
+        "Envoie une annonce générale à TOUT LE MONDE qui a déjà parlé à Naya, en privé et dans les groupes. Réservé au grand frère. Utilisé pour 'annonce à tout le monde que...', 'préviens tous ceux qui m'ont déjà parlé'.",
+      parameters: {
+        type: "object",
+        properties: {
+          message: { type: "string", description: "Le texte de l'annonce générale" },
+        },
+        required: ["message"],
+      },
+    },
+  },
 ];
 
 /**
@@ -187,7 +204,41 @@ export async function executeTool(ctx, toolName, input) {
       if (board.length === 0) {
         return "Aucune activité enregistrée pour l'instant dans ce groupe.";
       }
-      return board.map((e, i) => `${i + 1}. ${e.name} — ${e.points} points`).join("\n");
+
+      const title = type === "daily" ? "Classement du jour" : "Classement général";
+      const textList = board.map((e, i) => `${i + 1}. ${e.name} — ${e.points} points`).join("\n");
+
+      try {
+        const imageBuffer = await generateLeaderboardImage(board, title);
+        await ctx.telegram.sendPhoto(
+          chatId,
+          { source: imageBuffer },
+          { caption: `${title} :\n${textList}` }
+        );
+        return "Classement envoyé avec l'image et le texte.";
+      } catch (err) {
+        console.error("Erreur génération image classement:", err.message);
+        // Si l'image échoue pour une raison ou une autre, on retombe sur du texte simple
+        return `${title} :\n${textList}`;
+      }
+    }
+
+    case "broadcast_announcement": {
+      const { text: renderedText, entities } = renderWithPremiumEmojis(`📢 ${input.message}`);
+      const chats = getAllKnownChats();
+      let sentCount = 0;
+
+      for (const targetChatId of chats) {
+        try {
+          await ctx.telegram.sendMessage(targetChatId, renderedText, { entities });
+          sentCount++;
+        } catch (err) {
+          // On ignore les chats où l'envoi échoue (bot bloqué, quitté, etc.)
+          console.error(`Erreur diffusion vers ${targetChatId}:`, err.message);
+        }
+      }
+
+      return `Annonce diffusée à ${sentCount} conversation(s).`;
     }
 
     default:
