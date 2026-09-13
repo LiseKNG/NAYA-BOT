@@ -3,6 +3,7 @@
 // et leur exécution réelle via l'API Telegram (Telegraf).
 
 import { renderWithPremiumEmojis } from "./premium-emojis.js";
+import { getLeaderboard } from "./points-store.js";
 
 // Format OpenAI-compatible (utilisé par Groq) : { type: "function", function: {...} }
 export const toolDefinitions = [
@@ -98,6 +99,25 @@ export const toolDefinitions = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_leaderboard",
+      description:
+        "Récupère le classement des membres les plus actifs du groupe, basé sur leurs points d'activité. Utilisé pour 'classement', 'qui est le plus actif', 'top membres', 'points'.",
+      parameters: {
+        type: "object",
+        properties: {
+          period: {
+            type: "string",
+            enum: ["today", "alltime"],
+            description: "'today' = classement du jour, 'alltime' = classement total depuis le début",
+          },
+        },
+        required: ["period"],
+      },
+    },
+  },
 ];
 
 /**
@@ -159,6 +179,15 @@ export async function executeTool(ctx, toolName, input) {
         reply_markup: { inline_keyboard: inlineKeyboard },
       });
       return "Message avec boutons envoyé.";
+    }
+
+    case "get_leaderboard": {
+      const type = input.period === "today" ? "daily" : "total";
+      const board = getLeaderboard(chatId, type).slice(0, 10);
+      if (board.length === 0) {
+        return "Aucune activité enregistrée pour l'instant dans ce groupe.";
+      }
+      return board.map((e, i) => `${i + 1}. ${e.name} — ${e.points} points`).join("\n");
     }
 
     default:
