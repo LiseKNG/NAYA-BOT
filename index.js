@@ -1,7 +1,8 @@
 // index.js
 // Point d'entrée du bot Naya : reçoit les messages Telegram,
 // vérifie les droits (grand frère / autorisés / essai gratuit / accès payant),
-// garde un petit historique par groupe, et délègue à naya.js.
+// gère le captcha de vérification de canal, garde un petit historique par chat,
+// et délègue à naya.js.
 
 import "dotenv/config";
 import { Telegraf } from "telegraf";
@@ -10,6 +11,7 @@ import { getWelcomeConfig, formatWelcome } from "./welcome-config.js";
 import { renderWithPremiumEmojis } from "./premium-emojis.js";
 import { addPoints } from "./points-store.js";
 import { scheduleDailyAnnouncement } from "./scheduler.js";
+import { registerChat } from "./known-chats.js";
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
@@ -19,7 +21,7 @@ const AUTHORIZED_IDS = (process.env.AUTHORIZED_USER_IDS || "")
   .map((s) => s.trim())
   .filter(Boolean);
 
-// Canaux/groupes obligatoires à rejoindre pour débloquer l'essai gratuit.
+// Canaux/groupes obligatoires à rejoindre pour pouvoir discuter avec Naya.
 // Format : @nomducanal ou ID numérique (-100...), séparés par des virgules.
 // Naya doit être admin dans ces canaux/groupes pour pouvoir vérifier l'adhésion.
 const REQUIRED_CHANNELS = (process.env.REQUIRED_CHANNELS || "")
@@ -64,15 +66,23 @@ async function hasJoinedAllChannels(telegram, userId) {
   return true;
 }
 
-function joinChannelsMessage() {
-  const links = REQUIRED_CHANNELS.map((c) => `- ${c}`).join("\n");
-  return `Pour débloquer un essai gratuit de 3 jours avec moi, rejoins d'abord ${
-    REQUIRED_CHANNELS.length > 1 ? "tous ces canaux" : "ce canal"
-  } :\n${links}\n\nUne fois fait, réécris-moi ! 😊`;
+/** Construit le clavier du captcha : lien vers chaque canal + bouton de vérification. */
+function buildCaptchaKeyboard() {
+  const rows = REQUIRED_CHANNELS.filter((c) => c.startsWith("@")).map((c) => [
+    { text: `➡️ Rejoindre ${c}`, url: `https://t.me/${c.slice(1)}` },
+  ]);
+  rows.push([{ text: "✅ J'ai rejoint, vérifier", callback_data: "verify_join" }]);
+  return { inline_keyboard: rows };
+}
+
+function captchaMessage() {
+  return REQUIRED_CHANNELS.length > 1
+    ? "Pour discuter avec moi, rejoins d'abord tous ces canaux, puis clique sur le bouton pour vérifier 👇"
+    : "Pour discuter avec moi, rejoins d'abord ce canal, puis clique sur le bouton pour vérifier 👇";
 }
 
 function paymentMessage() {
-  return "Ton essai gratuit de 3 jours est terminé ! Pour continuer à discuter avec moi et me donner des ordres, il faut un accès : 10 ⭐ ou 1 💎 par semaine. Demande à mon grand frère pour en savoir plus 💕";
+  return "Ton essai gratuit de 3 jours est terminé ! Pour continuer à discuter avec moi, il faut un accès : 10 ⭐ ou 1 💎 par semaine. Demande à mon grand frère pour en savoir plus 💕";
 }
 
 /**
@@ -122,6 +132,37 @@ function computeMessagePoints(ctx, text) {
   return points;
 }
 
+// --- Captcha : démarrage d'une conversation privée avec Naya ---
+bot.start(async (ctx) => {
+  registerChat(ctx.chat.id);
+
+  const joined = await hasJoinedAllChannels(ctx.telegram, ctx.from.id);
+  if (!joined) {
+    await ctx.reply(captchaMessage(), { reply_markup: buildCaptchaKeyboard() });
+    return;
+  }
+
+  await resolveAccess(ctx); // démarre l'essai gratuit si besoin
+  await ctx.reply("Coucou ! Je suis Naya 🌙 Tu peux me parler directement, je t'écoute 💕");
+});
+
+// --- Bouton "j'ai rejoint, vérifier" du captcha ---
+bot.action("verify_join", async (ctx) => {
+  const joined = await hasJoinedAllChannels(ctx.telegram, ctx.from.id);
+  await ctx.answerCbQuery();
+
+  if (joined) {
+    await resolveAccess(ctx); // démarre l'essai gratuit si besoin
+    await ctx.editMessageText("Vérifié ! Tu peux discuter avec moi maintenant 😊");
+  } else {
+    await ctx.reply(
+      "Hmm, je ne te vois pas encore dans tous les canaux... vérifie que tu as bien rejoint, puis réessaie 🙏",
+      { reply_markup: buildCaptchaKeyboard() }
+    );
+  }
+});
+
+// --- Message de bienvenue pour les nouveaux membres d'un groupe ---
 bot.on("new_chat_members", async (ctx) => {
   const config = getWelcomeConfig(ctx.chat);
 
@@ -147,6 +188,7 @@ bot.on("new_chat_members", async (ctx) => {
 
 bot.on("text", async (ctx) => {
   const text = ctx.message.text;
+  registerChat(ctx.chat.id);
 
   // On compte les points d'activité pour TOUS les messages de groupe,
   // même ceux qui ne s'adressent pas directement à Naya.
@@ -160,7 +202,7 @@ bot.on("text", async (ctx) => {
   const { access, reason } = await resolveAccess(ctx);
   if (!access) {
     if (reason === "needs-join") {
-      await ctx.reply(joinChannelsMessage());
+      await ctx.reply(captchaMessage(), { reply_markup: buildCaptchaKeyboard() });
     } else {
       await ctx.reply(paymentMessage());
     }
