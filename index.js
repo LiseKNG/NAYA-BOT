@@ -8,6 +8,8 @@ import { Telegraf } from "telegraf";
 import { handleMessage } from "./naya.js";
 import { getWelcomeConfig, formatWelcome } from "./welcome-config.js";
 import { renderWithPremiumEmojis } from "./premium-emojis.js";
+import { addPoints } from "./points-store.js";
+import { scheduleDailyAnnouncement } from "./scheduler.js";
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
@@ -112,6 +114,14 @@ function shouldRespond(ctx, text) {
   return /\bnaya\b/i.test(text);
 }
 
+/** Calcule les points gagnés pour un message : 1 point de base + bonus interaction. */
+function computeMessagePoints(ctx, text) {
+  let points = 1;
+  if (ctx.message.reply_to_message) points += 3; // répondre à quelqu'un = interaction
+  if (/\bnaya\b/i.test(text)) points += 2; // interagir avec Naya
+  return points;
+}
+
 bot.on("new_chat_members", async (ctx) => {
   const config = getWelcomeConfig(ctx.chat);
 
@@ -137,6 +147,14 @@ bot.on("new_chat_members", async (ctx) => {
 
 bot.on("text", async (ctx) => {
   const text = ctx.message.text;
+
+  // On compte les points d'activité pour TOUS les messages de groupe,
+  // même ceux qui ne s'adressent pas directement à Naya.
+  if (ctx.chat.type !== "private") {
+    const name = ctx.from.first_name || ctx.from.username || "quelqu'un";
+    addPoints(ctx.chat.id, ctx.from.id, name, computeMessagePoints(ctx, text));
+  }
+
   if (!shouldRespond(ctx, text)) return;
 
   const { access, reason } = await resolveAccess(ctx);
@@ -169,6 +187,7 @@ bot.on("text", async (ctx) => {
 });
 
 bot.launch();
+scheduleDailyAnnouncement(bot);
 console.log("Naya est en ligne 🌙");
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
