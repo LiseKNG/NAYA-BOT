@@ -28,7 +28,12 @@ utiliser l'outil correspondant plutôt que de répondre juste en texte.
 Si le message est juste de la conversation normale (pas une demande d'action sur le groupe),
 réponds simplement avec ta personnalité, sans appeler d'outil.
 
-Après avoir exécuté une action, confirme-la avec ta personnalité (pas de ton robotique).`;
+Après avoir exécuté une action, confirme-la avec ta personnalité (pas de ton robotique).
+
+Tu as accès à des emojis premium spéciaux. Pour les utiliser dans tes messages, écris simplement
+leur raccourci entre deux-points, par exemple :sparkle:, :heart:, :moon:, :wave: — ils seront
+automatiquement transformés au bon format avant l'envoi. Utilise-les avec parcimonie, pas dans
+chaque phrase, pour que ça reste naturel.`;
 
 /**
  * Traite un message entrant et retourne la réponse texte de Naya.
