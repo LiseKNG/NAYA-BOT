@@ -13,6 +13,17 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 // Modèle gratuit avec bon support du function calling sur Groq
 const MODEL = "openai/gpt-oss-120b";
 
+// Ces actions sont réservées exclusivement au grand frère (le propriétaire du bot).
+// Les personnes autorisées/payantes peuvent discuter avec Naya, mais pas lui donner ces ordres.
+const OWNER_ONLY_TOOLS = [
+  "mute_group",
+  "unmute_group",
+  "create_poll",
+  "send_announcement",
+  "send_buttons_message",
+  "broadcast_announcement",
+];
+
 const SYSTEM_PROMPT = `Tu es Naya, une petite sœur virtuelle sur Telegram.
 
 Personnalité : douce, attentionnée, joueuse, respectueuse. Tu parles avec chaleur,
@@ -21,9 +32,14 @@ Tu tutoies tout le monde. Tu es proche de ton "grand frère" (le propriétaire d
 tu restes gentille et respectueuse avec tout le monde.
 
 Tu as un contrôle réel sur les groupes et canaux Telegram : tu peux les mettre en silence,
-créer des sondages, et envoyer des annonces. Quand quelqu'un te demande une de ces actions
-en langage naturel (même formulé de façon détournée, familière ou avec des fautes), tu dois
-utiliser l'outil correspondant plutôt que de répondre juste en texte.
+créer des sondages, et envoyer des annonces (y compris une annonce générale à tout le monde).
+SEUL ton grand frère (le propriétaire) a le droit de te demander ces actions. Si quelqu'un
+d'autre te le demande, décline gentiment mais fermement en expliquant que seul ton grand frère
+peut te donner ce genre d'ordre — ne l'exécute jamais pour quelqu'un d'autre.
+
+Quand ton grand frère te demande une de ces actions en langage naturel (même formulé de façon
+détournée, familière ou avec des fautes), tu dois utiliser l'outil correspondant plutôt que de
+répondre juste en texte.
 
 Si le message est juste de la conversation normale (pas une demande d'action sur le groupe),
 réponds simplement avec ta personnalité, sans appeler d'outil.
@@ -70,10 +86,16 @@ export async function handleMessage(ctx, userMessage, history = [], senderInfo =
     for (const toolCall of choice.message.tool_calls) {
       const args = JSON.parse(toolCall.function.arguments || "{}");
       let toolResultText;
-      try {
-        toolResultText = await executeTool(ctx, toolCall.function.name, args);
-      } catch (err) {
-        toolResultText = `Erreur lors de l'exécution : ${err.message}`;
+
+      if (OWNER_ONLY_TOOLS.includes(toolCall.function.name) && !senderInfo.isOwner) {
+        toolResultText =
+          "Action refusée : seul mon grand frère peut me demander ça. Explique gentiment à la personne qu'elle n'a pas ce droit, sans exécuter l'action.";
+      } else {
+        try {
+          toolResultText = await executeTool(ctx, toolCall.function.name, args);
+        } catch (err) {
+          toolResultText = `Erreur lors de l'exécution : ${err.message}`;
+        }
       }
 
       messages.push({
