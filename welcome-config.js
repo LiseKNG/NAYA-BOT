@@ -1,11 +1,13 @@
 // welcome-config.js
-// Configuration des messages de bienvenue par groupe.
+// Configuration des messages de bienvenue par groupe, en HTML soigné.
 // Ajoute une entrée par groupe où tu veux un message personnalisé.
 //
 // - match : le username du groupe (@monGroupe) OU son ID numérique (-100...)
-// - welcomeText : le message envoyé au nouveau membre. Tu peux utiliser :
+// - welcomeText : le message envoyé au nouveau membre, en HTML Telegram. Tu peux utiliser :
 //     {name}      -> prénom du nouveau membre
 //     {chatTitle} -> nom du groupe
+//   Balises HTML supportées par Telegram : <b>gras</b>, <i>italique</i>,
+//   <u>souligné</u>, <blockquote>citation encadrée</blockquote>, <a href="...">lien</a>
 // - buttons (optionnel) : boutons cliquables sous le message
 //
 // Si aucune config ne correspond au groupe, un message générique par défaut est utilisé.
@@ -13,7 +15,11 @@
 export const welcomeConfigs = [
   {
     match: "@remplace_par_le_username_du_groupe",
-    welcomeText: "Bienvenue {name} dans {chatTitle} ! 🌙 Je suis Naya, contente de t'avoir parmi nous 💕",
+    welcomeText:
+      "🌌 <b>Bienvenue {name} !</b> 🌌\n\n" +
+      "<blockquote>Tu viens de rejoindre <b>{chatTitle}</b>.\n" +
+      "Installe-toi, fais un tour, et n'hésite pas à te présenter 💫</blockquote>\n\n" +
+      "Je suis <b>Naya</b>, l'assistante du groupe — dis mon nom si tu as besoin de moi 🌙",
     buttons: [
       { text: "📜 Règlement", url: "https://t.me/ton_lien_reglement" },
       { text: "📢 Canal officiel", url: "https://t.me/ton_canal" },
@@ -22,13 +28,15 @@ export const welcomeConfigs = [
   // Ajoute d'autres groupes ici, sur le même modèle :
   // {
   //   match: "-1001234567890",
-  //   welcomeText: "Salut {name}, bienvenue dans {chatTitle} !",
+  //   welcomeText: "🌌 <b>Bienvenue {name}</b> dans <b>{chatTitle}</b> !",
   //   buttons: [],
   // },
 ];
 
 const DEFAULT_WELCOME = {
-  welcomeText: "Bienvenue {name} dans {chatTitle} ! 🌙",
+  welcomeText:
+    "🌌 <b>Bienvenue {name} !</b> 🌌\n\n" +
+    "<blockquote>Content(e) de t'avoir dans <b>{chatTitle}</b> 💫</blockquote>",
   buttons: [],
 };
 
