@@ -12,6 +12,7 @@ import { renderWithPremiumEmojis } from "./premium-emojis.js";
 import { addPoints } from "./points-store.js";
 import { scheduleDailyAnnouncement } from "./scheduler.js";
 import { registerChat } from "./known-chats.js";
+import { scheduleAutoGames, handleQuizAnswer } from "./game.js";
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
@@ -134,7 +135,7 @@ function computeMessagePoints(ctx, text) {
 
 // --- Captcha : démarrage d'une conversation privée avec Naya ---
 bot.start(async (ctx) => {
-  registerChat(ctx.chat.id);
+  registerChat(ctx.chat.id, ctx.chat.type);
 
   const joined = await hasJoinedAllChannels(ctx.telegram, ctx.from.id);
   if (!joined) {
@@ -162,6 +163,9 @@ bot.action("verify_join", async (ctx) => {
   }
 });
 
+// --- Réponse à un quiz du mini-jeu ---
+bot.action(/^quiz:/, handleQuizAnswer);
+
 // --- Message de bienvenue pour les nouveaux membres d'un groupe ---
 bot.on("new_chat_members", async (ctx) => {
   const config = getWelcomeConfig(ctx.chat);
@@ -175,7 +179,7 @@ bot.on("new_chat_members", async (ctx) => {
       chatTitle: ctx.chat.title || "ce groupe",
     });
 
-    const extra = {};
+    const extra = { parse_mode: "HTML" };
     if (config.buttons && config.buttons.length > 0) {
       extra.reply_markup = {
         inline_keyboard: config.buttons.map((b) => [{ text: b.text, url: b.url }]),
@@ -188,7 +192,7 @@ bot.on("new_chat_members", async (ctx) => {
 
 bot.on("text", async (ctx) => {
   const text = ctx.message.text;
-  registerChat(ctx.chat.id);
+  registerChat(ctx.chat.id, ctx.chat.type);
 
   // On compte les points d'activité pour TOUS les messages de groupe,
   // même ceux qui ne s'adressent pas directement à Naya.
@@ -230,6 +234,7 @@ bot.on("text", async (ctx) => {
 
 bot.launch();
 scheduleDailyAnnouncement(bot);
+scheduleAutoGames(bot);
 console.log("Naya est en ligne 🌙");
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
