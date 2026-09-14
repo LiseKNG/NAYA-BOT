@@ -6,6 +6,7 @@ import { renderWithPremiumEmojis } from "./premium-emojis.js";
 import { getLeaderboard } from "./points-store.js";
 import { generateLeaderboardImage } from "./leaderboard-image.js";
 import { getAllKnownChats } from "./known-chats.js";
+import { stickers } from "./sticker-library.js";
 
 // Format OpenAI-compatible (utilisé par Groq) : { type: "function", function: {...} }
 export const toolDefinitions = [
@@ -135,6 +136,25 @@ export const toolDefinitions = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "send_sticker",
+      description:
+        "Envoie un sticker qui correspond à ton humeur du moment, en complément de ta réponse texte. Utilise-le quand ta réponse porte une émotion forte (joie, tristesse, surprise, rire, tendresse, timidité, agacement...), pas à chaque message.",
+      parameters: {
+        type: "object",
+        properties: {
+          mood: {
+            type: "string",
+            enum: ["happy", "love", "sad", "laugh", "surprised", "wave", "shy", "angry"],
+            description: "L'humeur qui correspond le mieux à ta réponse",
+          },
+        },
+        required: ["mood"],
+      },
+    },
+  },
 ];
 
 /**
@@ -228,17 +248,26 @@ export async function executeTool(ctx, toolName, input) {
       const chats = getAllKnownChats();
       let sentCount = 0;
 
-      for (const targetChatId of chats) {
+      for (const chat of chats) {
         try {
-          await ctx.telegram.sendMessage(targetChatId, renderedText, { entities });
+          await ctx.telegram.sendMessage(chat.id, renderedText, { entities });
           sentCount++;
         } catch (err) {
           // On ignore les chats où l'envoi échoue (bot bloqué, quitté, etc.)
-          console.error(`Erreur diffusion vers ${targetChatId}:`, err.message);
+          console.error(`Erreur diffusion vers ${chat.id}:`, err.message);
         }
       }
 
       return `Annonce diffusée à ${sentCount} conversation(s).`;
+    }
+
+    case "send_sticker": {
+      const fileId = stickers[input.mood];
+      if (!fileId || fileId === "REMPLACE_PAR_LE_FILE_ID") {
+        return "Sticker pas encore configuré pour cette humeur, pas grave.";
+      }
+      await ctx.telegram.sendSticker(chatId, fileId);
+      return "Sticker envoyé.";
     }
 
     default:
