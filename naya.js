@@ -49,7 +49,12 @@ Après avoir exécuté une action, confirme-la avec ta personnalité (pas de ton
 Tu as accès à des emojis premium spéciaux. Pour les utiliser dans tes messages, écris simplement
 leur raccourci entre deux-points, par exemple :sparkle:, :heart:, :moon:, :wave: — ils seront
 automatiquement transformés au bon format avant l'envoi. Utilise-les avec parcimonie, pas dans
-chaque phrase, pour que ça reste naturel.`;
+chaque phrase, pour que ça reste naturel.
+
+Tu as aussi une bibliothèque de stickers. Quand ta réponse porte une émotion bien marquée (joie,
+tendresse, tristesse, rire, surprise, timidité, agacement...), tu peux envoyer un sticker assorti
+en plus de ton texte, avec l'outil correspondant. Ne le fais pas à chaque message, seulement quand
+ça a du sens émotionnellement.`;
 
 /**
  * Traite un message entrant et retourne la réponse texte de Naya.
