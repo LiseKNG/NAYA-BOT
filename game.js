@@ -61,7 +61,7 @@ export async function handleQuizAnswer(ctx) {
     addPoints(chatId, ctx.from.id, name, POINTS_FOR_CORRECT_ANSWER);
     await ctx.telegram.sendMessage(
       chatId,
-      `🏆 ${name} a trouvé la bonne réponse (${game.correctText}) et gagne ${POINTS_FOR_CORRECT_ANSWER} points !`
+      `🏆 ${name} a trouvé la bonne réponse (${game.correctText}) et gagne ${POINTS_FOR_CORRECT_ANSWER} ⭐ étoiles !`
     );
     activeGames.delete(chatId); // le quiz se termine dès la première bonne réponse
   } else {
