@@ -107,7 +107,7 @@ export const toolDefinitions = [
     function: {
       name: "get_leaderboard",
       description:
-        "Récupère le classement des membres les plus actifs du groupe, basé sur leurs points d'activité. Utilisé pour 'classement', 'qui est le plus actif', 'top membres', 'points'.",
+        "Récupère le classement des membres les plus actifs du groupe, basé sur leurs étoiles d'activité. Utilisé pour 'classement', 'qui est le plus actif', 'top membres', 'étoiles'.",
       parameters: {
         type: "object",
         properties: {
@@ -226,7 +226,7 @@ export async function executeTool(ctx, toolName, input) {
       }
 
       const title = type === "daily" ? "Classement du jour" : "Classement général";
-      const textList = board.map((e, i) => `${i + 1}. ${e.name} — ${e.points} points`).join("\n");
+      const textList = board.map((e, i) => `${i + 1}. ${e.name} — ${e.points} ⭐`).join("\n");
 
       try {
         const imageBuffer = await generateLeaderboardImage(board, title);
