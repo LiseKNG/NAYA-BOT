@@ -40,7 +40,7 @@ export async function generateLeaderboardImage(board, title) {
   board.slice(0, 10).forEach((entry, i) => {
     const y = LIST_START_Y + i * LIST_ROW_HEIGHT;
     const rank = medals[i] || `${i + 1}.`;
-    const line = `${rank}  ${entry.name} — ${entry.points} pts`;
+    const line = `${rank}  ${entry.name} — ${entry.points} ⭐`;
 
     image.print({
       font: fontRow,
