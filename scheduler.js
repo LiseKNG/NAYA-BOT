@@ -26,7 +26,7 @@ async function runAnnouncement(bot) {
     }
 
     const top = board[0];
-    const message = `🏆 Le membre le plus actif aujourd'hui, c'est ${top.name} avec ${top.points} points ! Bravo à toi :sparkle:`;
+    const message = `🏆 Le membre le plus actif aujourd'hui, c'est ${top.name} avec ${top.points} ⭐ étoiles ! Bravo à toi :sparkle:`;
     const { text, entities } = renderWithPremiumEmojis(message);
 
     try {
