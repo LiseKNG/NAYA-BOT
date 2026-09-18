@@ -12,7 +12,7 @@ import { renderWithPremiumEmojis } from "./premium-emojis.js";
 import { addPoints } from "./points-store.js";
 import { scheduleDailyAnnouncement } from "./scheduler.js";
 import { registerChat } from "./known-chats.js";
-import { scheduleAutoGames, handleQuizAnswer } from "./game.js";
+import { scheduleAutoWordGames, checkWordGuess } from "./word-game.js";
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
@@ -39,7 +39,7 @@ const trialStarts = new Map();
 
 // Historique court en mémoire, par chat.
 const chatHistories = new Map();
-const MAX_HISTORY = 10;
+const MAX_HISTORY = 40; // mémoire de conversation élargie (v2)
 
 function isOwner(userId) {
   return String(userId) === String(OWNER_ID);
@@ -164,7 +164,7 @@ bot.action("verify_join", async (ctx) => {
 });
 
 // --- Réponse à un quiz du mini-jeu ---
-bot.action(/^quiz:/, handleQuizAnswer);
+// (le jeu "devine le mot" n'utilise pas de boutons, les réponses se tapent dans le chat)
 
 // --- Message de bienvenue pour les nouveaux membres d'un groupe ---
 bot.on("new_chat_members", async (ctx) => {
@@ -186,7 +186,11 @@ bot.on("new_chat_members", async (ctx) => {
       };
     }
 
-    await ctx.reply(text, extra);
+    if (config.image) {
+      await ctx.replyWithPhoto(config.image, { caption: text, ...extra });
+    } else {
+      await ctx.reply(text, extra);
+    }
   }
 });
 
@@ -199,6 +203,11 @@ bot.on("text", async (ctx) => {
   if (ctx.chat.type !== "private") {
     const name = ctx.from.first_name || ctx.from.username || "quelqu'un";
     addPoints(ctx.chat.id, ctx.from.id, name, computeMessagePoints(ctx, text));
+
+    // Si une partie de "devine le mot" est en cours dans ce groupe, on vérifie
+    // si ce message est la bonne réponse — avant même de regarder si on parle à Naya.
+    const wasCorrectGuess = await checkWordGuess(ctx);
+    if (wasCorrectGuess) return;
   }
 
   if (!shouldRespond(ctx, text)) return;
@@ -234,7 +243,7 @@ bot.on("text", async (ctx) => {
 
 bot.launch();
 scheduleDailyAnnouncement(bot);
-scheduleAutoGames(bot);
+scheduleAutoWordGames(bot);
 console.log("Naya est en ligne 🌙");
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
