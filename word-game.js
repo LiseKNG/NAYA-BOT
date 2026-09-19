@@ -10,6 +10,7 @@ import { addPoints } from "./points-store.js";
 import { generateWordHintImage } from "./word-hint-image.js";
 
 const GAME_INTERVAL_HOURS = parseInt(process.env.GAME_INTERVAL_HOURS || "3", 10);
+const GAME_FIRST_DELAY_MINUTES = parseInt(process.env.GAME_FIRST_DELAY_MINUTES || "10", 10);
 const POINTS_FOR_CORRECT_GUESS = 5;
 const ROUND_DURATION_MS = 10 * 60 * 1000; // 10 minutes avant de révéler le mot si personne ne trouve
 
@@ -88,12 +89,24 @@ export async function checkWordGuess(ctx) {
 /** Démarre la boucle de mini-jeux automatiques (à appeler une fois après bot.launch()). */
 export function scheduleAutoWordGames(bot) {
   const intervalMs = GAME_INTERVAL_HOURS * 60 * 60 * 1000;
-  setInterval(() => {
+  const firstDelayMs = GAME_FIRST_DELAY_MINUTES * 60 * 1000;
+
+  function runForAllGroups() {
     for (const chatId of getAllKnownGroupChats()) {
       launchWordGame(bot, chatId).catch((err) =>
         console.error(`Erreur lancement jeu de mot pour ${chatId}:`, err.message)
       );
     }
-  }, intervalMs);
-  console.log(`Jeu "devine le mot" programmé toutes les ${GAME_INTERVAL_HOURS}h.`);
+  }
+
+  // Premier jeu peu après le démarrage (au lieu d'attendre le plein intervalle),
+  // puis on reprend la cadence normale ensuite.
+  setTimeout(() => {
+    runForAllGroups();
+    setInterval(runForAllGroups, intervalMs);
+  }, firstDelayMs);
+
+  console.log(
+    `Jeu "devine le mot" : premier lancement dans ${GAME_FIRST_DELAY_MINUTES} min, puis toutes les ${GAME_INTERVAL_HOURS}h.`
+  );
 }
