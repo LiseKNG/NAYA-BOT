@@ -26,17 +26,27 @@ function normalize(text) {
     .trim();
 }
 
-function buildHint(word) {
+/** Construit un indice plus généreux : catégorie + première/dernière lettre + quelques lettres au hasard révélées. */
+function buildHint(entry) {
+  const { word, category } = entry;
   const letters = word.split("");
-  const masked = letters.map((l, i) => (i === 0 ? l.toUpperCase() : "_")).join(" ");
-  return `${masked}  (${word.length} lettres)`;
+  const revealed = new Set([0, letters.length - 1]); // première et dernière lettre toujours visibles
+
+  // Révèle environ 1 lettre sur 3 en plus, au hasard, pour laisser un vrai défi sans être injouable
+  const extraReveals = Math.max(1, Math.floor(letters.length / 3));
+  while (revealed.size < 2 + extraReveals && revealed.size < letters.length) {
+    revealed.add(Math.floor(Math.random() * letters.length));
+  }
+
+  const masked = letters.map((l, i) => (revealed.has(i) ? l.toUpperCase() : "_")).join(" ");
+  return `Catégorie : ${category}\n${masked}  (${word.length} lettres)`;
 }
 
 async function launchWordGame(bot, chatId) {
   if (activeRounds.has(chatId)) return; // une partie est déjà en cours dans ce groupe
 
-  const word = wordDictionary[Math.floor(Math.random() * wordDictionary.length)];
-  const hintText = buildHint(word);
+  const entry = wordDictionary[Math.floor(Math.random() * wordDictionary.length)];
+  const hintText = buildHint(entry);
   const roundMinutes = ROUND_DURATION_MS / 60000;
 
   const caption =
@@ -55,13 +65,13 @@ async function launchWordGame(bot, chatId) {
   const timeoutId = setTimeout(async () => {
     activeRounds.delete(chatId);
     try {
-      await bot.telegram.sendMessage(chatId, `⏰ Personne n'a trouvé... le mot était "${word}" !`);
+      await bot.telegram.sendMessage(chatId, `⏰ Personne n'a trouvé... le mot était "${entry.word}" !`);
     } catch (err) {
       console.error(`Erreur révélation mot pour ${chatId}:`, err.message);
     }
   }, ROUND_DURATION_MS);
 
-  activeRounds.set(chatId, { word, timeoutId });
+  activeRounds.set(chatId, { word: entry.word, timeoutId });
 }
 
 /**
@@ -84,6 +94,18 @@ export async function checkWordGuess(ctx) {
 
   await ctx.reply(`🎉 Bravo ${name} ! Le mot était bien "${round.word}", tu gagnes ${POINTS_FOR_CORRECT_GUESS} ⭐ !`);
   return true;
+}
+
+/**
+ * Génère un aperçu du jeu (indice + image) SANS démarrer de vraie partie —
+ * utile pour que le grand frère teste le rendu en privé avant que ça parte en groupe.
+ * @returns {Promise<{word: string, hintText: string, imageBuffer: Buffer}>}
+ */
+export async function previewWordGame() {
+  const entry = wordDictionary[Math.floor(Math.random() * wordDictionary.length)];
+  const hintText = buildHint(entry);
+  const imageBuffer = await generateWordHintImage(hintText);
+  return { word: entry.word, hintText, imageBuffer };
 }
 
 /** Démarre la boucle de mini-jeux automatiques (à appeler une fois après bot.launch()). */
