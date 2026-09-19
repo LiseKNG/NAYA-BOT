@@ -186,8 +186,26 @@ bot.on("new_chat_members", async (ctx) => {
       };
     }
 
-    if (config.image) {
-      await ctx.replyWithPhoto(config.image, { caption: text, ...extra });
+    // On essaie d'abord d'afficher la photo de profil du nouveau membre lui-même.
+    // Si son profil n'a pas de photo (ou si c'est privé), on retombe sur la bannière
+    // configurée pour le groupe, puis sur du texte simple en dernier recours.
+    let photoSource = null;
+    try {
+      const photos = await ctx.telegram.getUserProfilePhotos(member.id, { limit: 1 });
+      if (photos.total_count > 0) {
+        const sizes = photos.photos[0];
+        photoSource = sizes[sizes.length - 1].file_id; // la plus grande résolution
+      }
+    } catch (err) {
+      console.error(`Erreur récupération photo de profil de ${member.id}:`, err.message);
+    }
+
+    if (!photoSource && config.image) {
+      photoSource = config.image;
+    }
+
+    if (photoSource) {
+      await ctx.replyWithPhoto(photoSource, { caption: text, ...extra });
     } else {
       await ctx.reply(text, extra);
     }
