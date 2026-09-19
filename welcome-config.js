@@ -9,20 +9,22 @@
 //   Balises HTML supportées par Telegram : <b>gras</b>, <i>italique</i>,
 //   <u>souligné</u>, <blockquote>citation encadrée</blockquote>, <a href="...">lien</a>
 // - buttons (optionnel) : boutons cliquables sous le message
+// - image (optionnel) : URL d'une image envoyée avec le message (bannière de bienvenue)
 //
 // Si aucune config ne correspond au groupe, un message générique par défaut est utilisé.
 
 export const welcomeConfigs = [
   {
     match: "@remplace_par_le_username_du_groupe",
+    image: "https://exemple.com/ta-banniere.jpg",
     welcomeText:
       "🌌 <b>Bienvenue {name} !</b> 🌌\n\n" +
       "<blockquote>Tu viens de rejoindre <b>{chatTitle}</b>.\n" +
       "Installe-toi, fais un tour, et n'hésite pas à te présenter 💫</blockquote>\n\n" +
       "Je suis <b>Naya</b>, l'assistante du groupe — dis mon nom si tu as besoin de moi 🌙",
     buttons: [
-      { text: "📜 Règlement", url: "https://t.me/ton_lien_reglement" },
-      { text: "📢 Canal officiel", url: "https://t.me/ton_canal" },
+      { text: "👥 Chat Group", url: "https://t.me/ton_lien_groupe" },
+      { text: "📢 Join our channel", url: "https://t.me/ton_canal" },
     ],
   },
   // Ajoute d'autres groupes ici, sur le même modèle :
