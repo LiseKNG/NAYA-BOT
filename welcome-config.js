@@ -19,12 +19,13 @@ export const welcomeConfigs = [
     image: "https://exemple.com/ta-banniere.jpg",
     welcomeText:
       "🌌 <b>Bienvenue {name} !</b> 🌌\n\n" +
-      "<blockquote>Tu viens de rejoindre <b>{chatTitle}</b>.\n" +
-      "Installe-toi, fais un tour, et n'hésite pas à te présenter 💫</blockquote>\n\n" +
-      "Je suis <b>Naya</b>, l'assistante du groupe — dis mon nom si tu as besoin de moi 🌙",
+      "<blockquote>Tu viens de rejoindre <b>{chatTitle}</b>, et on est vraiment content(e) de t'avoir parmi nous 💫\n\n" +
+      "Prends le temps de faire un tour, de lire le règlement, et surtout n'hésite pas à te présenter — on adore découvrir les nouveaux visages !</blockquote>\n\n" +
+      "Je suis <b>Naya</b> 🌙, l'assistante du groupe. Je suis là pour animer un peu la communauté (mini-jeux, classement, annonces...) et pour t'aider si besoin — il te suffit de dire mon nom dans un message.\n\n" +
+      "Passe un excellent moment parmi nous ✨",
     buttons: [
       { text: "👥 Chat Group", url: "https://t.me/ton_lien_groupe" },
-      { text: "📢 Join our channel", url: "https://t.me/ton_canal" },
+      { text: "📢 Join our channel", url: "https://t.me/AssistanceNaya" },
     ],
   },
   // Ajoute d'autres groupes ici, sur le même modèle :
@@ -38,7 +39,10 @@ export const welcomeConfigs = [
 const DEFAULT_WELCOME = {
   welcomeText:
     "🌌 <b>Bienvenue {name} !</b> 🌌\n\n" +
-    "<blockquote>Content(e) de t'avoir dans <b>{chatTitle}</b> 💫</blockquote>",
+    "<blockquote>Content(e) de t'avoir dans <b>{chatTitle}</b> 💫\n\n" +
+    "Installe-toi, fais un tour, et n'hésite pas à te présenter — la communauté adore accueillir de nouvelles têtes !</blockquote>\n\n" +
+    "Je suis <b>Naya</b> 🌙, l'assistante du groupe. Dis mon nom dans un message si tu as besoin de quoi que ce soit.\n\n" +
+    "Passe un excellent moment parmi nous ✨",
   buttons: [],
 };
 
