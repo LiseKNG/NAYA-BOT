@@ -7,6 +7,8 @@ import { getLeaderboard } from "./points-store.js";
 import { generateLeaderboardImage } from "./leaderboard-image.js";
 import { getAllKnownChats } from "./known-chats.js";
 import { stickers } from "./sticker-library.js";
+import { searchTrack } from "./spotify.js";
+import { previewWordGame } from "./word-game.js";
 
 // Format OpenAI-compatible (utilisé par Groq) : { type: "function", function: {...} }
 export const toolDefinitions = [
@@ -155,6 +157,30 @@ export const toolDefinitions = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "search_song",
+      description:
+        "Cherche une chanson sur Spotify et envoie un extrait de 30 secondes (quand disponible) accompagné d'un lien pour l'écouter en entier sur Spotify. Utilisé pour 'joue-moi...', 'trouve la chanson...', 'mets de la musique...', 'écoute...'.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Titre et/ou artiste de la chanson recherchée" },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "preview_word_game",
+      description:
+        "Génère un aperçu du mini-jeu 'devine le mot' (indice + image) en privé, SANS lancer de vraie partie dans un groupe. Réservé au grand frère, pour tester le rendu avant que ça parte en vrai.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
 ];
 
 /**
@@ -268,6 +294,54 @@ export async function executeTool(ctx, toolName, input) {
       }
       await ctx.telegram.sendSticker(chatId, fileId);
       return "Sticker envoyé.";
+    }
+
+    case "search_song": {
+      const track = await searchTrack(input.query);
+      if (!track) {
+        return "Aucune chanson trouvée pour cette recherche.";
+      }
+
+      const caption = `🎵 <b>${track.name}</b>\n${track.artist}`;
+      const keyboard = {
+        inline_keyboard: [[{ text: "▶️ Écouter en entier sur Spotify", url: track.spotifyUrl }]],
+      };
+
+      if (track.previewUrl) {
+        await ctx.telegram.sendAudio(chatId, track.previewUrl, {
+          caption,
+          parse_mode: "HTML",
+          reply_markup: keyboard,
+          title: track.name,
+          performer: track.artist,
+        });
+        return "Extrait de 30 secondes envoyé avec le lien Spotify.";
+      }
+
+      if (track.albumArt) {
+        await ctx.telegram.sendPhoto(chatId, track.albumArt, {
+          caption: `${caption}\n\n(pas d'extrait audio disponible pour ce titre)`,
+          parse_mode: "HTML",
+          reply_markup: keyboard,
+        });
+      } else {
+        await ctx.telegram.sendMessage(chatId, caption, { parse_mode: "HTML", reply_markup: keyboard });
+      }
+      return "Pas d'extrait audio disponible pour ce titre, lien Spotify envoyé.";
+    }
+
+    case "preview_word_game": {
+      const { word, hintText, imageBuffer } = await previewWordGame();
+      await ctx.telegram.sendPhoto(
+        chatId,
+        { source: imageBuffer },
+        {
+          caption:
+            `👀 Aperçu (pas une vraie partie) :\n\n${hintText}\n\n` +
+            `Le mot était : "${word}"`,
+        }
+      );
+      return "Aperçu envoyé.";
     }
 
     default:
