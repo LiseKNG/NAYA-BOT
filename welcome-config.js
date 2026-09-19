@@ -12,6 +12,14 @@
 // - image (optionnel) : URL d'une image envoyée avec le message (bannière de bienvenue)
 //
 // Si aucune config ne correspond au groupe, un message générique par défaut est utilisé.
+//
+// GLOBAL_BUTTONS : boutons affichés dans TOUS les groupes, y compris ceux sans config
+// spécifique. Modifie juste les liens ci-dessous une seule fois.
+
+const GLOBAL_BUTTONS = [
+  { text: "👥 Chat Group", url: "https://t.me/ton_lien_groupe" },
+  { text: "📢 Join our channel", url: "https://t.me/AssistanceNaya" },
+];
 
 export const welcomeConfigs = [
   {
@@ -23,16 +31,13 @@ export const welcomeConfigs = [
       "Prends le temps de faire un tour, de lire le règlement, et surtout n'hésite pas à te présenter — on adore découvrir les nouveaux visages !</blockquote>\n\n" +
       "Je suis <b>Naya</b> 🌙, l'assistante du groupe. Je suis là pour animer un peu la communauté (mini-jeux, classement, annonces...) et pour t'aider si besoin — il te suffit de dire mon nom dans un message.\n\n" +
       "Passe un excellent moment parmi nous ✨",
-    buttons: [
-      { text: "👥 Chat Group", url: "https://t.me/ton_lien_groupe" },
-      { text: "📢 Join our channel", url: "https://t.me/AssistanceNaya" },
-    ],
+    buttons: GLOBAL_BUTTONS,
   },
   // Ajoute d'autres groupes ici, sur le même modèle :
   // {
   //   match: "-1001234567890",
   //   welcomeText: "🌌 <b>Bienvenue {name}</b> dans <b>{chatTitle}</b> !",
-  //   buttons: [],
+  //   buttons: GLOBAL_BUTTONS,
   // },
 ];
 
@@ -43,7 +48,7 @@ const DEFAULT_WELCOME = {
     "Installe-toi, fais un tour, et n'hésite pas à te présenter — la communauté adore accueillir de nouvelles têtes !</blockquote>\n\n" +
     "Je suis <b>Naya</b> 🌙, l'assistante du groupe. Dis mon nom dans un message si tu as besoin de quoi que ce soit.\n\n" +
     "Passe un excellent moment parmi nous ✨",
-  buttons: [],
+  buttons: GLOBAL_BUTTONS,
 };
 
 /** Trouve la config de bienvenue pour ce chat (par username ou ID), sinon renvoie le défaut. */
