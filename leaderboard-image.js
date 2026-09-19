@@ -1,8 +1,9 @@
 // leaderboard-image.js
-// Génère l'image du classement en utilisant le template graphique
+// Génère l'image PNG du classement, en s'appuyant sur le template graphique
 // assets/leaderboard-template.jpg comme fond, avec les noms écrits dessus.
+// Utilise Jimp 0.22.x (API stable et bien documentée) pour le texte bitmap.
 
-import { Jimp, JimpMime } from "jimp";
+import Jimp from "jimp";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -29,27 +30,15 @@ export async function generateLeaderboardImage(board, title) {
   const fontTitle = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE);
   const fontRow = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE);
 
-  image.print({
-    font: fontTitle,
-    x: LIST_START_X,
-    y: 30,
-    text: title,
-    maxWidth: LIST_MAX_WIDTH,
-  });
+  image.print(fontTitle, LIST_START_X, 30, title, LIST_MAX_WIDTH);
 
   board.slice(0, 10).forEach((entry, i) => {
     const y = LIST_START_Y + i * LIST_ROW_HEIGHT;
     const rank = medals[i] || `${i + 1}.`;
     const line = `${rank}  ${entry.name} — ${entry.points} ⭐`;
 
-    image.print({
-      font: fontRow,
-      x: LIST_START_X,
-      y,
-      text: line,
-      maxWidth: LIST_MAX_WIDTH,
-    });
+    image.print(fontRow, LIST_START_X, y, line, LIST_MAX_WIDTH);
   });
 
-  return image.getBuffer(JimpMime.png);
+  return image.getBufferAsync(Jimp.MIME_PNG);
 }
