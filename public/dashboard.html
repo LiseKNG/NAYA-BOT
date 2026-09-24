@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Tableau de bord — Naya</title>
+<style>
+  :root {
+    --glass-bg: rgba(255, 255, 255, 0.14);
+    --glass-border: rgba(255, 255, 255, 0.35);
+    --text-main: #ffffff;
+    --text-dim: rgba(255, 255, 255, 0.65);
+    --accent: #b98cff;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    font-family: -apple-system, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(circle at 20% 10%, #6a4bff 0%, #2c1a66 35%, #0d0620 100%);
+    color: var(--text-main);
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .page {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 28px 18px 60px;
+  }
+  .header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .header .moon { font-size: 34px; }
+  .header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 6px 0 2px;
+  }
+  .header p {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin: 0;
+  }
+  .glass-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 22px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  }
+  .stats-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .stat {
+    flex: 1;
+    text-align: center;
+  }
+  .stat .value {
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .stat .label {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .section-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 4px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .board-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    font-size: 14px;
+  }
+  .board-row:last-child { border-bottom: none; }
+  .board-rank {
+    width: 26px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .board-name { flex: 1; padding-left: 4px; }
+  .board-points { color: var(--text-dim); }
+  .empty {
+    color: var(--text-dim);
+    font-size: 14px;
+    text-align: center;
+    padding: 10px 0;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(185, 140, 255, 0.25);
+    border: 1px solid rgba(185, 140, 255, 0.5);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  .loading {
+    text-align: center;
+    color: var(--text-dim);
+    padding: 60px 0;
+  }
+</style>
+</head>
+<body>
+  <div class="page" id="app">
+    <div class="loading">Chargement du tableau de bord…</div>
+  </div>
+
+  <script>
+    function getChatId() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("chat");
+    }
+
+    function medal(rank) {
+      return rank === 0 ? "🥇" : rank === 1 ? "🥈" : rank === 2 ? "🥉" : (rank + 1) + ".";
+    }
+
+    function renderBoard(rows) {
+      if (!rows || rows.length === 0) {
+        return '<div class="empty">Aucune activité enregistrée pour l\'instant.</div>';
+      }
+      return rows.map((e, i) => `
+        <div class="board-row">
+          <div class="board-rank">${medal(i)}</div>
+          <div class="board-name">${escapeHtml(e.name)}</div>
+          <div class="board-points">${e.points} ⭐</div>
+        </div>
+      `).join("");
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    async function load() {
+      const chatId = getChatId();
+      const app = document.getElementById("app");
+
+      if (!chatId) {
+        app.innerHTML = '<div class="loading">Aucun groupe spécifié.</div>';
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/dashboard-data?chat=${encodeURIComponent(chatId)}`);
+        const data = await res.json();
+
+        app.innerHTML = `
+          <div class="header">
+            <div class="moon">🌙</div>
+            <h1>${escapeHtml(data.chatTitle)}</h1>
+            <p>Tableau de bord Naya</p>
+          </div>
+
+          <div class="glass-card">
+            <div class="stats-row">
+              <div class="stat">
+                <div class="value">${data.memberCount ?? "—"}</div>
+                <div class="label">Membres</div>
+              </div>
+              <div class="stat">
+                <div class="value">${data.leaderboardTotal.length}</div>
+                <div class="label">Actifs classés</div>
+              </div>
+              <div class="stat">
+                <div class="value">${data.activeGame.inProgress ? "🟢" : "⚪️"}</div>
+                <div class="label">Jeu en cours</div>
+              </div>
+            </div>
+            ${data.activeGame.inProgress ? '<div style="text-align:center"><span class="badge">🔤 Une partie "devine le mot" est en cours !</span></div>' : ""}
+          </div>
+
+          <div class="glass-card">
+            <div class="section-title">🏆 Classement du jour</div>
+            ${renderBoard(data.leaderboardDaily)}
+          </div>
+
+          <div class="glass-card">
+            <div class="section-title">🌟 Classement général</div>
+            ${renderBoard(data.leaderboardTotal)}
+          </div>
+        `;
+      } catch (err) {
+        app.innerHTML = '<div class="loading">Impossible de charger les données.</div>';
+      }
+    }
+
+    load();
+
+    if (window.Telegram?.WebApp) {
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+    }
+  </script>
+</body>
+</html>
