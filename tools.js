@@ -9,7 +9,7 @@ import { getAllKnownChats } from "./known-chats.js";
 import { stickers } from "./sticker-library.js";
 import { searchTrack } from "./spotify.js";
 import { previewWordGame } from "./word-game.js";
-import { scheduleDeletion, getEphemeralDelayMs } from "./ephemeral.js";
+import { sendEphemeralMessage } from "./ephemeral.js";
 
 // Format OpenAI-compatible (utilisé par Groq) : { type: "function", function: {...} }
 export const toolDefinitions = [
@@ -161,29 +161,6 @@ export const toolDefinitions = [
   {
     type: "function",
     function: {
-      name: "send_temporary_sticker",
-      description:
-        "Envoie un sticker non explicite comme contenu temporaire, puis le supprime automatiquement après un délai configuré. À utiliser uniquement pour les stickers de la bibliothèque Naya.",
-      parameters: {
-        type: "object",
-        properties: {
-          mood: {
-            type: "string",
-            enum: ["happy", "love", "sad", "laugh", "surprised", "wave", "shy", "angry"],
-            description: "L'humeur du sticker à envoyer.",
-          },
-          delay_seconds: {
-            type: "number",
-            description: "Délai avant suppression. Si absent, utilise NAYA_EPHEMERAL_SECONDS.",
-          },
-        },
-        required: ["mood"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
       name: "search_song",
       description:
         "Cherche une chanson sur Spotify et envoie un extrait de 30 secondes (quand disponible) accompagné d'un lien pour l'écouter en entier sur Spotify. Utilisé pour 'joue-moi...', 'trouve la chanson...', 'mets de la musique...', 'écoute...'.",
@@ -203,6 +180,25 @@ export const toolDefinitions = [
       description:
         "Génère un aperçu du mini-jeu 'devine le mot' (indice + image) en privé, SANS lancer de vraie partie dans un groupe. Réservé au grand frère, pour tester le rendu avant que ça parte en vrai.",
       parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "send_ephemeral_message",
+      description:
+        "Envoie un message en conversation privée qui se supprime automatiquement après un délai (message éphémère, façon Snapchat). Utilisable UNIQUEMENT en privé. Utilisé quand on demande un message temporaire, qui s'autodétruit, ou 'en éphémère'.",
+      parameters: {
+        type: "object",
+        properties: {
+          message: { type: "string", description: "Le texte du message éphémère" },
+          seconds: {
+            type: "number",
+            description: "Durée avant suppression en secondes (par défaut 30, max 300)",
+          },
+        },
+        required: ["message"],
+      },
     },
   },
 ];
@@ -311,22 +307,6 @@ export async function executeTool(ctx, toolName, input) {
       return `Annonce diffusée à ${sentCount} conversation(s).`;
     }
 
-    case "send_temporary_sticker": {
-      const fileId = stickers[input.mood];
-      if (!fileId || fileId === "REMPLACE_PAR_LE_FILE_ID") {
-        return "Sticker pas encore configuré pour cette humeur.";
-      }
-
-      const sent = await ctx.telegram.sendSticker(chatId, fileId);
-      const requestedSeconds = Number(input.delay_seconds);
-      const delayMs = Number.isFinite(requestedSeconds) && requestedSeconds >= 5
-        ? Math.min(requestedSeconds, 48 * 60 * 60) * 1000
-        : getEphemeralDelayMs();
-
-      scheduleDeletion(ctx.telegram, chatId, sent.message_id, delayMs);
-      return `Sticker temporaire envoyé. Il sera supprimé automatiquement dans ${Math.round(delayMs / 1000)} seconde(s).`;
-    }
-
     case "send_sticker": {
       const fileId = stickers[input.mood];
       if (!fileId || fileId === "REMPLACE_PAR_LE_FILE_ID") {
@@ -382,6 +362,15 @@ export async function executeTool(ctx, toolName, input) {
         }
       );
       return "Aperçu envoyé.";
+    }
+
+    case "send_ephemeral_message": {
+      if (ctx.chat.type !== "private") {
+        return "Les messages éphémères ne fonctionnent qu'en conversation privée, pas dans les groupes.";
+      }
+      const ttl = Math.min(Math.max(input.seconds || 30, 5), 300);
+      await sendEphemeralMessage(ctx.telegram, chatId, input.message, ttl);
+      return `Message éphémère envoyé, il se supprimera automatiquement dans ${ttl} secondes.`;
     }
 
     default:
