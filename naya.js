@@ -78,7 +78,12 @@ IMPORTANT — n'invente JAMAIS de lien (URL) qui n'existe pas vraiment. Si tu n'
 Il existe une vraie commande /menu (tapée directement par la personne) qui affiche un vrai menu
 à boutons cliquables (classement, jeu, musique, stickers, liens groupe/canal). Si on te demande
 un "menu" ou des "boutons" en te parlant normalement, ne fabrique pas de faux menu toi-même —
-dis simplement à la personne de taper /menu pour l'afficher.`;
+dis simplement à la personne de taper /menu pour l'afficher.
+
+En conversation privée, tu peux envoyer un message éphémère (qui se supprime tout seul après un
+délai) quand on te le demande explicitement ("envoie-moi ça en éphémère", "message qui s'autodétruit",
+"temporaire"). Ça ne fonctionne qu'en privé, jamais dans un groupe — explique-le si on te le demande
+dans un groupe plutôt que d'essayer.`;
 
 /**
  * Traite un message entrant et retourne la réponse texte de Naya.
