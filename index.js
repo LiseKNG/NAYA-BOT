@@ -17,7 +17,6 @@ import { buildMainMenu } from "./menu.js";
 import { getLeaderboard } from "./points-store.js";
 import { generateLeaderboardImage } from "./leaderboard-image.js";
 import { startDashboardServer } from "./dashboard-server.js";
-import { scheduleDeletion, getEphemeralDelayMs } from "./ephemeral.js";
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
@@ -44,7 +43,7 @@ const trialStarts = new Map();
 
 // Historique court en mémoire, par chat.
 const chatHistories = new Map();
-const MAX_HISTORY = 40; // mémoire de conversation élargie (v2)\n\n// Mode temporaire par utilisateur : les réponses texte de Naya sont supprimées après un délai.\nconst ephemeralUsers = new Set();
+const MAX_HISTORY = 40; // mémoire de conversation élargie (v2)
 
 function isOwner(userId) {
   return String(userId) === String(OWNER_ID);
@@ -203,26 +202,6 @@ bot.action("menu_stickers", async (ctx) => {
   );
 });
 
-bot.command("ephemeral", async (ctx) => {
-  if (ctx.chat.type !== "private") {
-    await ctx.reply("Le mode temporaire est disponible uniquement en conversation privée avec Naya.");
-    return;
-  }
-
-  const key = String(ctx.from.id);
-  const arg = (ctx.message.text.split(/\s+/)[1] || "").toLowerCase();
-
-  if (["off", "stop", "desactive", "désactive"].includes(arg)) {
-    ephemeralUsers.delete(key);
-    await ctx.reply("Mode temporaire désactivé.");
-    return;
-  }
-
-  ephemeralUsers.add(key);
-  const seconds = Math.round(getEphemeralDelayMs() / 1000);
-  await ctx.reply(`Mode temporaire activé. Les prochaines réponses de Naya seront supprimées automatiquement après ${seconds} secondes.\n\nPour désactiver : /ephemeral off`);
-});
-
 bot.command("dashboard", async (ctx) => {
   if (ctx.chat.type === "private") {
     await ctx.reply("Le tableau de bord est disponible dans les groupes, pas en privé.");
@@ -238,6 +217,28 @@ bot.command("dashboard", async (ctx) => {
     reply_markup: {
       inline_keyboard: [
         [{ text: "📊 Ouvrir le tableau de bord", url: `${publicUrl}/dashboard.html?chat=${ctx.chat.id}` }],
+      ],
+    },
+  });
+});
+
+bot.command("profil", async (ctx) => {
+  if (ctx.chat.type !== "private") {
+    await ctx.reply("Écris-moi en message privé et tape /profil pour voir ton profil perso 😊");
+    return;
+  }
+  const publicUrl = process.env.PUBLIC_URL;
+  if (!publicUrl) {
+    await ctx.reply("Le profil n'est pas encore configuré (PUBLIC_URL manquant).");
+    return;
+  }
+  // Les boutons web_app ne fonctionnent qu'en message privé — c'est pour ça
+  // que /profil (contrairement à /dashboard) peut utiliser l'authentification
+  // Telegram réelle pour savoir précisément qui consulte la page.
+  await ctx.reply("🌙 Ton profil :", {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "🌙 Ouvrir mon profil", web_app: { url: `${publicUrl}/profile.html` } }],
       ],
     },
   });
@@ -340,6 +341,14 @@ bot.on("text", async (ctx) => {
   const history = chatHistories.get(chatId) || [];
   const senderIsOwner = isOwner(ctx.from.id);
 
+  // Affiche "Naya tape..." pendant qu'elle réfléchit, comme une vraie personne.
+  // Le statut Telegram expire au bout de ~5s, donc on le relance en boucle
+  // tant que la réponse n'est pas prête.
+  await ctx.telegram.sendChatAction(chatId, "typing").catch(() => {});
+  const typingInterval = setInterval(() => {
+    ctx.telegram.sendChatAction(chatId, "typing").catch(() => {});
+  }, 4000);
+
   try {
     const reply = await handleMessage(ctx, text, history, { isOwner: senderIsOwner });
 
@@ -348,14 +357,12 @@ bot.on("text", async (ctx) => {
     chatHistories.set(chatId, history.slice(-MAX_HISTORY));
 
     const { text: renderedText, entities } = renderWithPremiumEmojis(reply);
-    const sent = await ctx.telegram.sendMessage(chatId, renderedText, { entities });
-
-    if (ctx.chat.type === "private" && ephemeralUsers.has(String(ctx.from.id))) {
-      scheduleDeletion(ctx.telegram, chatId, sent.message_id, getEphemeralDelayMs());
-    }
+    await ctx.telegram.sendMessage(chatId, renderedText, { entities });
   } catch (err) {
     console.error("Erreur Naya:", err);
     await ctx.reply("Oups, j'ai eu un petit souci... tu peux réessayer ? 😅");
+  } finally {
+    clearInterval(typingInterval);
   }
 });
 
