@@ -312,6 +312,10 @@ export async function executeTool(ctx, toolName, input) {
       if (!fileId || fileId === "REMPLACE_PAR_LE_FILE_ID") {
         return "Sticker pas encore configuré pour cette humeur, pas grave.";
       }
+      // Petit délai + statut "choisit un autocollant" pour un rendu plus humain,
+      // comme quelqu'un qui parcourt vraiment sa liste de stickers.
+      await ctx.telegram.sendChatAction(chatId, "choose_sticker").catch(() => {});
+      await new Promise((resolve) => setTimeout(resolve, 900));
       await ctx.telegram.sendSticker(chatId, fileId);
       return "Sticker envoyé.";
     }
